@@ -1,18 +1,25 @@
 <template>
   <div class="home">
-    <img alt="Vue logo" src="../assets/logo.png">
-    <HelloWorld msg="Welcome to Your Vue.js App"/>
+    <poker-comp />
   </div>
 </template>
 
 <script>
 // @ is an alias to /src
-import HelloWorld from '@/components/HelloWorld.vue'
+import PokerComp from '@/components/poker-comp.vue'
 
 export default {
   name: 'HomeView',
   components: {
-    HelloWorld
+    PokerComp
   }
 }
 </script>
+
+<style scoped>
+.home {
+  width: 1200px;
+  height: 1500px;
+  zoom: .5;
+}
+</style>

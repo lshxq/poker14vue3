@@ -1,5 +1,21 @@
 <template>
-	<div class="poker-main" :class='[mainPanelClass]'>
+	<div class="poker-main" :class='[mainPanelClass]' ref="mainPanelRef">
+		<audio src="./static/audio/_1.m4a" ref="audioRef1"/>
+		<audio src="./static/audio/_2.m4a" ref="audioRef2"/>
+		<audio src="./static/audio/_3.m4a" ref="audioRef3"/>
+		<audio src="./static/audio/_4.m4a" ref="audioRef4"/>
+		<audio src="./static/audio/_5.m4a" ref="audioRef5"/>
+		<audio src="./static/audio/_6.m4a" ref="audioRef6"/>
+		<audio src="./static/audio/_7.m4a" ref="audioRef7"/>
+		<audio src="./static/audio/_8.m4a" ref="audioRef8"/>
+		<audio src="./static/audio/_9.m4a" ref="audioRef9"/>
+		<audio src="./static/audio/_10.m4a" ref="audioRef10"/>
+		<audio src="./static/audio/_11.m4a" ref="audioRef11"/>
+		<audio src="./static/audio/_12.m4a" ref="audioRef12"/>
+		<audio src="./static/audio/_13.m4a" ref="audioRef13"/>
+		<audio src="./static/audio/_14.m4a" ref="audioRef14"/>
+		<audio src="./static/audio/_plus.m4a" ref="audioRef15"/>
+		
 		<div v-for='(card, idx) of cards' :key='card.index' class="card" :style='[cardStyle(card, idx)]' @click='cardClicked(card)'></div>
 		<div class="red-picked-value" :class='{show: redPickedValue>0 && redCanPick}'>{{redPickedValue}}</div>
 		<div class="red-value">{{redValue}}</div>
@@ -100,6 +116,9 @@
 	}
 	
 	export default {
+		props: {
+			size: Object
+		},
 		data() {
 			return {
 				show: {
@@ -125,35 +144,53 @@
 			}
 		},
 		mounted() {
-			const au = src => {
-				const audio = document.createElement('audio')
-				audio.src= `${src}`
-				audio.autoplay = false
-        document.body.append(audio)
-				return audio
-			}
+			const {
+				$refs: refs
+			} = this
+			refs.mainPanelRef.style.setProperty('--main-height', `${this.heightComp}px`)
+			refs.mainPanelRef.style.setProperty('--main-width', `${this.widthComp}px`)
+			refs.mainPanelRef.style.setProperty('--card-width', `${this.cardWidth}px`)
+			refs.mainPanelRef.style.setProperty('--card-height', `${this.cardHeight}px`)
+
 			this.audio = [
-				au('/static/_1.m4a'),
-				au('/static/_2.m4a'),
-				au('/static/_3.m4a'),
-				au('/static/_4.m4a'),
-				au('/static/_5.m4a'),
-				au('/static/_5.m4a'),
-				au('/static/_6.m4a'),
-				au('/static/_7.m4a'),
-				au('/static/_8.m4a'),
-				au('/static/_9.m4a'),
-				au('/static/_10.m4a'),
-				au('/static/_11.m4a'),
-				au('/static/_12.m4a'),
-				au('/static/_13.m4a'),
-				au('/static/_14.m4a'),
-				au('/static/_plus.m4a'),
-			]
-			this.du = au('https://img.tukuppt.com/newpreview_music/09/03/80/5c8ae2d24455276952.mp3')
+				refs.audioRef1,
+				refs.audioRef2,
+				refs.audioRef3,
+				refs.audioRef4,
+				refs.audioRef5,
+				refs.audioRef6,
+				refs.audioRef7,
+				refs.audioRef8,
+				refs.audioRef9,
+				refs.audioRef10,
+				refs.audioRef11,
+				refs.audioRef12,
+				refs.audioRef13,
+				refs.audioRef14,
+				refs.audioRef15,
+			] 
+			// https://img.tukuppt.com/newpreview_music/09/03/80/5c8ae2d24455276952.mp3
 		},
 		
 		computed: {
+			widthComp() {
+				const {
+					size
+				} = this
+				return size.width
+			},
+			heightComp() {
+				const {
+					size
+				} = this
+				return size.height
+			},
+			cardWidth() {
+				return Math.floor(this.widthComp / 10)
+			},
+			cardHeight() {
+				return Math.floor(this.cardWidth / 0.618)
+			},
 			groundSort() {
 				const arr = JSON.parse(JSON.stringify(this.ground))
 				arr.sort((a, b) => {
@@ -510,7 +547,8 @@
 			},
 			newGame() {
 				const that = this
-				that.cards = mess([...createCards(1), ...createCards(2)])
+				that.cards = [...createCards(1), ...createCards(2)]
+				mess([])
 				that.red = []
 				that.blue = []
 				that.ground = []
@@ -545,30 +583,32 @@
 				const {
 					red,
 					blue,
-					ground
+					ground,
+					cardWidth: cardWidthBase
 				} = that
 				
-				let top = 400
-				let left = 600
+				const cardWidth = cardWidthBase * 1.1
+
+				let top = this.heightComp / 3
+				let left = this.widthComp / 10 * 8.5
 				
 				let leftOffset = 10
-				let cardWidth = 140
 				
 				let found = false
 				const redIdx = indexOf(card, red)
 				if (redIdx>=0) {
-					top = 1100
+					top = this.heightComp / 4 * 3
 					left = leftOffset + redIdx * cardWidth
 					found = true
 					if (indexOf(card, that.red2) >= 0) {
-						top = 1050
+						top = this.heightComp / 4 * 3 - this.cardHeight * .2
 					}
 				}
 				
 				const blueIdx = indexOf(card, blue)
 				if (blueIdx>=0) {
 					top = 10
-					left = leftOffset + blueIdx * cardWidth
+					left = leftOffset + blueIdx * cardWidth 
 					found = true
 					if (indexOf(card, that.blue2) >=0 ) {
 						top = 60
@@ -605,8 +645,8 @@
 				}
 				
 				
-				const style = {
-					'background-position': found ? `${1770 - card.num * 136}px ${1028 - card.type * 205}px` : '1960px 400px',
+				const style = { 
+					'background-position': found ? `${118 * 69 / this.cardWidth + card.num * that.cardWidth}px ${514 - card.type * that.cardHeight}px` : '980px 200px',
 					top: `${top}px`,
 					left: `${left}px`,
 					'z-index': 10001 + idx
@@ -644,8 +684,14 @@
 
 <style>
 	.poker-main {
-		height: 100%;
-		width: 100%;
+		--main-height: 100%;
+		--main-width: 100%;
+		height: var(--main-height);
+		width: var(--main-width);
+		
+		--card-width: calc(var(--main-width) / 10);
+		--card-height: calc(var(--card-width) / 0.618);
+
 		background: hsl(120, 100%, 30%);
 		z-index: 10000;
 		overflow: hidden;
@@ -653,10 +699,11 @@
 	}
 
 	.card {
+
 		background-image: url('./poker.jpg');
-		width: 136px;
-		height: 205px;
-		background-size: 2000px 1028px;
+		width: var(--card-width);
+		height: var(--card-height);
+		background-size: calc(1000px * var(--card-width) / 69) calc(514px * var(--card-width) / 69);
 		display: inline-block;
 		margin: 1px;
 		border-radius: 4px;
@@ -671,13 +718,14 @@
 		width: 100%;
 		background: white;
 		position: absolute;
-		background: linear-gradient(red, lightgray red);
+		background: linear-gradient(black, lightgray, black);
 		display: flex;
 		align-items: center;
 		overflow: hidden;
 		justify-content: center;
 		opacity: 0;
-		font-size: 80px;
+		font-size: calc(var(--main-width) * .08);
+		cursor: pointer;
 	}
 	
 	.show-welcome > .welcome{
@@ -722,7 +770,7 @@
 		position: absolute;
 		bottom: 50px;
 		right: 200px;
-		font-size: 100px;
+		font-size: calc(var(--main-width) * .05);
 		color: white;
 		font-weight: bolder;
 		text-shadow: 5px 5px 5px gray;
@@ -739,7 +787,7 @@
 		position: absolute;
 		bottom: 50px;
 		right: 50px;
-		font-size: 80px;
+		font-size: calc(var(--main-width) * .05);
 	}
 	
 		
@@ -747,14 +795,14 @@
 		position: absolute;
 		top: 10px;
 		right: 50px;
-		font-size: 80px;
+		font-size: calc(var(--main-width) * .05);
 	}
 	
 	.card-left {
 		position: absolute;
 		right: 10px;
 		top: 600px;
-		font-size: 80px;
+		font-size: calc(var(--main-width) * .05);
 	}
 	.card-left:before {
 		content: '剩余：'

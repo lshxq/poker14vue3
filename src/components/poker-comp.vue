@@ -16,7 +16,7 @@
 		<audio src="./static/audio/_14.m4a" ref="audioRef14"/>
 		<audio src="./static/audio/_plus.m4a" ref="audioRef15"/>
 		
-		<div v-for='(card, idx) of cards' :key='card.index' class="card" :style='[cardStyle(card, idx)]' @click='cardClicked(card)'>
+		<div v-for='(card, idx) of cards' :key='card.index' class="card" :style='[cardStyle1(card, idx)]' @click='cardClicked(card)'>
 		</div>
 		<div class="red-picked-value" :class='{show: redPickedValue>0 && redCanPick}'>{{redPickedValue}}</div>
 		<div class="red-value">{{redValue}}</div>
@@ -28,10 +28,25 @@
 		</div>
 		
 		<div class="welcome" @click='show.welcome = false; newGame()'>
-			<div class="image">点击屏幕开始游戏</div>
+			<div class="image">
+				<div class="card" v-for="(card) of welcomeCards" :style="cardStyle2(card)" :key="card.index"></div>
+			</div>
+			<div class="mask">
+				点击屏幕开始游戏
+			</div>
 		</div>
 
-		<div class="game-over"></div>
+		<div class="game-over">
+			<div class="go-score">得分 {{redValue}}</div>
+			<div class="statistic">
+				<div class="row" v-for="item of typeValueMapSorted" :key="item.type">
+					<div class="card" :style="cardStyle3({type: item.type, num: 0})"></div>
+					<div class="stat-text">{{item.value}} * {{getRedTypeCount(item.type)}}</div>
+				</div>
+			</div>
+			<div class="go-text1">Game Over</div>
+			<div class="go-text2">{{redValue > blueValue ? '胜出' : redValue ===  blueValue ? '平局' :'洗洗睡吧'}}</div>
+		</div>
 	</div>
 </template>
 
@@ -44,7 +59,7 @@
 		4: 5,
 	}
 	
-	const fapaiWait = 200
+	const fapaiWait = 1000
 	const createCards = (part=Math.random()) => {
 		const arr = []
 		
@@ -125,7 +140,19 @@
 			size: Object
 		},
 		data() {
+			const welcomeCards = createCards()
+			welcomeCards.splice(0, 34)
+			const {
+				size
+			} = this
+			welcomeCards.forEach(card => {
+				card.top = Math.random() * size.height
+				card.left = Math.random() * size.width
+				card.rotate = Math.random() * 360,
+				card.speed = Math.random() * 3 + 1
+			})
 			return {
+				welcomeCards,
 				show: {
 					welcome: true,
 					gameover: false
@@ -150,6 +177,17 @@
 			}
 		},
 		mounted() {
+			this.timeId = setInterval(() => {
+				const arr = []
+				for (const card of this.welcomeCards) {
+					card.top += card.speed
+					if (card.top > this.heightComp) {
+						card.top = -120
+					}
+					arr.push(card)
+				}
+				this.welcomeCards = arr
+			}, 10)
 			const {
 				$refs: refs
 			} = this
@@ -177,8 +215,58 @@
 			] 
 			// https://img.tukuppt.com/newpreview_music/09/03/80/5c8ae2d24455276952.mp3
 		},
+	
+		umount() {
+			clearInterval(this.timeId)
+		},
 		
 		computed: {
+			typeValueMapSorted() {
+				const arr = []
+				for (const key in typeValueMap) {
+					const value = typeValueMap[key]
+					arr.push({
+						type: key,
+						value
+					})
+				}
+				arr.sort((a, b) => {
+					return b.value - a.value
+				})
+				return arr
+			},
+			redPicked0() {
+				const {
+					redPicked
+				} = this
+				return redPicked.filter(card => card.type === 0)
+			},
+			redPicked1() {
+				const {
+					redPicked
+				} = this
+				return redPicked.filter(card => card.type === 1)
+			},
+			redPicked2() {
+				const {
+					redPicked
+				} = this
+				return redPicked.filter(card => card.type === 2)
+			},
+			redPicked3() {
+				const {
+					redPicked
+				} = this
+				return redPicked.filter(card => card.type === 3)
+			},
+			redPicked4() {
+				const {
+					redPicked
+				} = this
+				return redPicked.filter(card => card.type === 4)
+			},
+			
+
 			cardLeftComp() {
 				let rv = this.cards.length - this.cardIndex
 				if (rv < 0) {
@@ -309,10 +397,30 @@
 						this.picked = false
 					}
 				}
+			},
+			cardLeftComp(value) {
+				if (value <= 0) {
+					this.show.gameover = true
+				}
 			}
 		},
 		
 		methods: {
+			getRedTypeCount(type) {
+				switch(type) {
+					case 4:
+						return this.redPicked4
+					case 3: 
+						return this.redPicked3
+					case 2: 
+						return this.redPicked2
+					case 1: 
+						return this.redPicked1
+					case 0: 
+						return this.redPicked0
+				}
+				return 0
+			},
 			getNextCard() {
 				const {
 					cards,
@@ -438,7 +546,7 @@
 					// that.audio[that.getCardValue(pickedBlue.picked)].play()
 					that.picked = pickedBlue.picked
 					
-					await wait(2000) // 等待用户观察一下
+					await wait(3000) // 等待用户观察一下
 					
 					for (const bb of that.blue2) { // 去积分
 						that.bluePicked.push(bb)
@@ -463,7 +571,7 @@
 				
 				const toGround = that.blue[Math.floor(Math.random()*that.blue.length)] // 随机丢弃一张
 				that.blue2.push(toGround)
-				await wait()
+				await wait(2000)
 				that.blue = takeOut(that.blue, [toGround])
 				
 				that.ground.push(toGround)
@@ -612,8 +720,22 @@
 					'background-position': `${bgWidth - cardWidth * card.num}px ${bgHeight - cardHeight * card.type}px`,
 				}
 			},
+			cardStyle3(card) {
+				const style = this.cardBg(card)
+				style.position = 'relative'
+				return style
+			},
+
+			cardStyle2(card) {
+				const style = this.cardBg(card)
+				style.top = `${card.top}px`;
+				style.left = `${card.left}px`;
+				style.transform = `rotate(${card.rotate}deg)`
+				style.transition = 'none'
+				return style
+			},
 			
-			cardStyle(card, idx) {
+			cardStyle1(card, idx) {
 				const that = this
 				const {
 					red,
@@ -732,6 +854,7 @@
 
 <style>
 	.poker-main {
+		user-select: none;
 		--main-height: 100%;
 		--main-width: 100%;
 		height: var(--main-height);
@@ -762,34 +885,13 @@
 		color: red;
 	}
 	
-	.card>.card-type-1 {
-		background: url(./T1.png);
-		width: 100%;
-		height: 100%;
-	}
-	.card>.card-type-2 {
-		background: url(./T2.png);
-		width: 100%;
-		height: 100%;
-	}
-	.card>.card-type-3 {
-		background: url(./T3.png);
-		width: 100%;
-		height: 100%;
-	}
-	.card>.card-type-4 {
-		background: url(./T4.png);
-		width: 100%;
-		height: 100%;
-	}
-
 	.welcome {
 		height: 100%;
 		width: 100%;
 		background: white;
 		position: absolute;
 		right: 0;
-		top: -100%;
+		top: -200%;
 		position: absolute;
 		font-size: calc(var(--main-width) * .08);
 		cursor: pointer;
@@ -797,6 +899,8 @@
 	}
 
 	.welcome>.image {
+		position: absolute;
+		top: 0;
 		background: url('../assets/peaple.png');
 		width: 100%;
 		height: 100%;
@@ -806,6 +910,23 @@
 		font-size: calc(var(--card-width));
 		--shadow: calc(var(--card-width) * .05);
 		text-shadow: var(--shadow) var(--shadow) calc(var(--shadow) * .3) gray;
+		overflow: hidden;
+	}
+
+	.welcome>.mask {
+		position: absolute;
+		top: 0;
+		background: rgba(255, 255, 255, .5);
+		width: 100%;
+		height: 100%;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		font-size: calc(var(--card-width));
+		--shadow: calc(var(--card-width) * .05);
+		text-shadow: var(--shadow) var(--shadow) calc(var(--shadow) * .3) gray;
+		overflow: hidden;
+		backdrop-filter: blur(calc(var(--card-width) * .03));
 	}
 	
 	.show-welcome > .welcome{
@@ -895,13 +1016,50 @@
 
 	.game-over {
 		z-index: 999999;
-		background: white;
+		background: linear-gradient(rgba(200, 200, 200, .8), rgba(125, 122, 200, .8), rgba(200, 200, 200, .8));
 		height: 100%;
 		width: 100%;
 		position: absolute;
 		top: -100%;
 		right: 0;
 		transition: all 1s;
+
+	}
+
+	.game-over>.go-score {
+		margin-top: calc(var(--card-height) * 1);
+		font-size: var(--card-width);
+		color: white;
+		--shadow: calc(var(--card-width) * .05);
+		text-shadow: var(--shadow) var(--shadow) 10px black;
+	}
+
+	.game-over>.statistic>.row {
+		display: flex;
+		align-items: center;
+		padding-left: calc(var(--card-width) * 1.5);
+		margin-bottom: calc(var(--card-height) * .1);
+	}
+	.game-over>.statistic>.row>.stat-text {
+		font-size: calc(var(--card-width) * .7);
+		color: white;
+		padding-left: calc(var(--card-width) * .3);
+		--shadow: calc(var(--card-width) * .05);
+		text-shadow: var(--shadow) var(--shadow) 10px black;
+	}
+
+	.go-text1 {
+		color: hsl(120, 100%, 50%);
+		font-size: var(--card-width);
+		--shadow: calc(var(--card-width) * .05);
+		text-shadow: var(--shadow) var(--shadow) 10px black;
+	}
+
+	.go-text2 {
+		color: hsl(120, 100%, 50%);
+		font-size: var(--card-width);
+		--shadow: calc(var(--card-width) * .05);
+		text-shadow: var(--shadow) var(--shadow) 10px black;
 	}
 
 	.show-gameover>.game-over {

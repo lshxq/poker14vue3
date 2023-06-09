@@ -21,13 +21,17 @@
 		<div class="red-picked-value" :class='{show: redPickedValue>0 && redCanPick}'>{{redPickedValue}}</div>
 		<div class="red-value">{{redValue}}</div>
 		<div class="blue-value">{{blueValue}}</div>
-		<div class="card-left">{{cards.length - cardIndex}}</div>
+		<div class="card-left">{{cardLeftComp}}</div>
 		<div class="control-bar">
 			<div class="button" @click='pickCard' :class='{disabled: !redCanPick || pickedSum2 !== 14}'>捡牌</div>
 			<div class="button" @click='dropCard' :class='{disabled: !redCanDrop || cardCntInRed2 !== 1}'>弃牌</div>
 		</div>
 		
-		<div class="welcome" @click='show.welcome = false; newGame()'> 点击屏幕开始游戏</div>
+		<div class="welcome" @click='show.welcome = false; newGame()'>
+			<div class="image">点击屏幕开始游戏</div>
+		</div>
+
+		<div class="game-over"></div>
 	</div>
 </template>
 
@@ -123,7 +127,8 @@
 		data() {
 			return {
 				show: {
-					welcome: true
+					welcome: true,
+					gameover: false
 				},
 				cards: [],   // 剩余可用的牌
 				cardIndex: 0, // 当前拿到第几张牌了
@@ -174,6 +179,17 @@
 		},
 		
 		computed: {
+			cardLeftComp() {
+				let rv = this.cards.length - this.cardIndex
+				if (rv < 0) {
+					rv = 0
+				}
+				return rv
+			},
+			cardOnWelcome() {
+				const cards =  mess(createCards());
+				return cards
+			},
 			widthComp() {
 				const {
 					size
@@ -210,12 +226,16 @@
 			},
 			mainPanelClass() {
 				const {
-					welcome
+					welcome,
+					gameover
 				} = this.show
 				
 				const arr = []
 				if (welcome) {
 					arr.push('show-welcome')
+				}
+				if (gameover) {
+					arr.push('show-gameover')
 				}
 				return arr
 			},
@@ -578,6 +598,20 @@
 					
 				}, 100)
 			},
+
+			cardBg(card) {
+				const {
+					cardHeight,
+					cardWidth
+				} = this
+				const rate = 68 / this.cardWidth
+				const bgWidth = 884 / rate
+				const bgHeight = 507 / rate
+				return {
+					'background-size': `${bgWidth}px ${bgHeight}px`,
+					'background-position': `${bgWidth - cardWidth * card.num}px ${bgHeight - cardHeight * card.type}px`,
+				}
+			},
 			
 			cardStyle(card, idx) {
 				const that = this
@@ -590,8 +624,11 @@
 				} = that
 				
 
-				let top = cardHeight * 3 
-				let left = this.widthComp - 2 * cardWidth
+				const groundTop = cardHeight * 2
+				let top = groundTop
+
+				const rightCardLeft = this.widthComp - 1.2 * cardWidth
+				let left = rightCardLeft
 				
 				let leftOffset = this.cardWidth * .3
 				const popDist = cardHeight * .2
@@ -624,11 +661,11 @@
 				let cardInGround = false
 				if (groundIdx >= 0) {
 					found = true
-					const columnCount = 4
+					const columnCount = 6
 					const rowIdx = Math.floor(groundIdx / columnCount)
 					const colIdx = groundIdx %  columnCount
 					
-					top = cardHeight * 3 + rowIdx * cardHeight * 1.1
+					top = groundTop + rowIdx * cardHeight * 1.1
 					left = leftOffset + colIdx * cardWidth * 1.1
 
 					if(that.picked) {
@@ -641,22 +678,23 @@
 				
 				if(indexOf(card, that.redPicked) >= 0) { // 红方已经捡走得分的牌
 					top = redBaseTop
-					left = this.widthComp - cardWidth * 2
+					left = rightCardLeft
 				}
 				
 				if(indexOf(card, that.bluePicked) >= 0) {
 					top = blueBaseTop
-					left = this.widthComp - cardWidth * 2
+					left = rightCardLeft
 					
 				}
-				
 				const rate = 68 / this.cardWidth
 				const bgWidth = 884 / rate
-				const bgHeight = 507 / rate
-
+				
+				const cardBg = this.cardBg(card)
+				if (!found) {
+					cardBg['background-position'] = `${bgWidth + cardWidth}px ${cardHeight}px`
+				}
 				const style = {
-					'background-size': `${bgWidth}px ${bgHeight}px`,
-					'background-position': found ? `${bgWidth - cardWidth * card.num}px ${bgHeight - cardHeight * card.type}px` : `${bgWidth + cardWidth}px ${cardHeight}px`,
+					...cardBg,
 					top: `${top}px`,
 					left: `${left}px`,
 					'z-index': 10001 + idx
@@ -703,7 +741,7 @@
 		--card-height: calc(var(--card-width) / 0.618);
 
 		--font-size: calc(var(--card-width) * .3);
-		--score-left: calc(var(--main-width) - var(--card-width) * 2.7);
+		--score-left: calc(var(--card-width) * .2);
 
 		background: hsl(120, 100%, 30%);
 		z-index: 10000;
@@ -746,24 +784,32 @@
 	}
 
 	.welcome {
-		height: 0;
+		height: 100%;
 		width: 100%;
 		background: white;
 		position: absolute;
-		background: linear-gradient(black, lightgray, black);
-		display: flex;
-		align-items: center;
-		overflow: hidden;
-		justify-content: center;
-		opacity: 0;
+		right: 0;
+		top: -100%;
+		position: absolute;
 		font-size: calc(var(--main-width) * .08);
 		cursor: pointer;
+		transition: all 1s;
+	}
+
+	.welcome>.image {
+		background: url('../assets/peaple.png');
+		width: 100%;
+		height: 100%;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		font-size: calc(var(--card-width));
+		--shadow: calc(var(--card-width) * .05);
+		text-shadow: var(--shadow) var(--shadow) calc(var(--shadow) * .3) gray;
 	}
 	
 	.show-welcome > .welcome{
 		top: 0;
-		height: 100%;
-		opacity: 1;
 	}
 	
 	.control-bar {
@@ -819,7 +865,7 @@
 	.red-value {
 		position: absolute;
 		top: calc(var(--main-height) * 4 / 5 + var(--card-height));
-		left: var(--score-left);
+		right: var(--score-left);
 		font-size: var(--font-size);
 	}
 	.red-value:before {
@@ -830,7 +876,7 @@
 	.blue-value {
 		position: absolute;
 		top: calc(var(--card-height) * .25);
-		left: var(--score-left);
+		right: var(--score-left);
 		font-size: var(--font-size);
 	}
 	.blue-value:before {
@@ -839,11 +885,26 @@
 	
 	.card-left {
 		position: absolute;
-		right: calc(var(--card-width) * 1);
-		top: calc(var(--card-height) * 4);
+		right: var(--score-left);
+		top: calc(var(--card-height) * 3);
 		font-size: var(--font-size);
 	}
 	.card-left:before {
 		content: '剩余：'
+	}
+
+	.game-over {
+		z-index: 999999;
+		background: white;
+		height: 100%;
+		width: 100%;
+		position: absolute;
+		top: -100%;
+		right: 0;
+		transition: all 1s;
+	}
+
+	.show-gameover>.game-over {
+		top: 0;
 	}
 </style>

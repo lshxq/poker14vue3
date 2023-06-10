@@ -422,18 +422,22 @@
 		
 		methods: {
 			getRedTypeCount(type) {
-				switch(type) {
-					case 4:
-						return this.redPicked4.length
-					case 3: 
-						return this.redPicked3.length
-					case 2: 
-						return this.redPicked2.length
-					case 1: 
-						return this.redPicked1.length
-					case 0: 
-						return this.redPicked0.length
+				if (4 == type) {
+					return this.redPicked4.length
 				}
+				if (3 == type) {
+					return this.redPicked3.length
+				}
+				if (2 == type) {
+					return this.redPicked2.length
+				}
+				if (1 == type) {
+					return this.redPicked1.length
+				}
+				if (0 == type) {
+					return this.redPicked0.length
+				}
+				
 				return 0
 			},
 			getNextCard() {
@@ -460,7 +464,7 @@
 				}
 
 				for (let ii=0; ii<arr.length - 1; ii++) { // 双匹配
-					for (let jj=ii+1; jj<arr.length; jj+1) {
+					for (let jj=ii+1; jj<arr.length; jj++) {
 						const c1 = arr[ii]
 						const c2 = arr[jj]
 						if (that.getCardNumber(c1) + that.getCardNumber(c2) + that.getCardNumber(card)) {
@@ -767,7 +771,7 @@
 			},
 			newGame() {
 				const that = this
-				that.cards = mess([...createCards(1)]) // , ...createCards(2)
+				that.cards = mess([...createCards(1), ...createCards(2)])
 				that.red = []
 				that.blue = []
 				that.ground = []

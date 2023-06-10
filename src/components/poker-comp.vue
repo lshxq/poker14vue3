@@ -18,7 +18,8 @@
 		
 		<div v-for='(card, idx) of cards' :key='card.index' class="card" :style='[cardStyle1(card, idx)]' @click='cardClicked(card)'>
 		</div>
-		<div class="red-picked-value" :class='{show: redPickedValue>0 && redCanPick}'>{{redPickedValue}}</div>
+		<div class="red-picked-value" :class='{show: redPickedValue>0 && redCanPick}'>+{{redPickedValue}}</div>
+		<div class="blue-picked-value" :class="{show: bluePickedValue > 0 && picked}">+{{bluePickedValue}}</div>
 		<div class="red-value">{{redValue}}</div>
 		<div class="blue-value">{{blueValue}}</div>
 		<div class="card-left">{{cardLeftComp}}</div>
@@ -59,7 +60,7 @@
 		4: 5,
 	}
 	
-	const fapaiWait = 1000
+	const fapaiWait = 500
 	const createCards = (part=Math.random()) => {
 		const arr = []
 		
@@ -291,10 +292,12 @@
 				return size.height
 			},
 			cardWidth() {
-				return Math.floor(this.widthComp / 10)
+				//return Math.floor(this.widthComp / 10)
+				return this.cardHeight / 102 * 68 
 			},
 			cardHeight() {
-				return Math.floor(102 / 68 * this.cardWidth)
+				//Math.floor(102 / 68 * this.cardWidth)
+				return this.heightComp / 10
 			},
 			groundSort() {
 				const arr = JSON.parse(JSON.stringify(this.ground))
@@ -330,7 +333,7 @@
 			pickedSum() { 
 				const that = this
 				const sum = this.red2.reduce((acc, cc) => {
-					return acc + that.getCardValue((cc))
+					return acc + that.getCardNumber((cc))
 				}, 0)
 				return sum
 			},
@@ -341,9 +344,26 @@
 				} = this
 				let num = 0;
 				if (picked) {
-					num = this.getCardValue(picked)
+					num = this.getCardNumber(picked)
 				}
 				return num + pickedSum
+			},
+			bluePickedValue() {
+				const {
+					blue2,
+					picked
+				} = this
+
+				let value = 0
+				for (const cc of blue2) {
+					if (cc) {
+						value += typeValueMap[cc.type]
+					}
+				}
+				if (picked) {
+					value += typeValueMap[picked.type]
+				}
+				return value
 			},
 			redPickedValue() {
 				const{
@@ -398,26 +418,21 @@
 					}
 				}
 			},
-			cardLeftComp(value) {
-				if (value <= 0) {
-					this.show.gameover = true
-				}
-			}
 		},
 		
 		methods: {
 			getRedTypeCount(type) {
 				switch(type) {
 					case 4:
-						return this.redPicked4
+						return this.redPicked4.length
 					case 3: 
-						return this.redPicked3
+						return this.redPicked3.length
 					case 2: 
-						return this.redPicked2
+						return this.redPicked2.length
 					case 1: 
-						return this.redPicked1
+						return this.redPicked1.length
 					case 0: 
-						return this.redPicked0
+						return this.redPicked0.length
 				}
 				return 0
 			},
@@ -425,9 +440,57 @@
 				const {
 					cards,
 				} = this
+				if (this.cardIndex >= cards.length) {
+					return false
+				}
 				const rv = cards[this.cardIndex]
 				this.cardIndex++
 				return rv
+			},
+			getMatched(card, arr) {
+				const that = this
+				const matched = []
+				for (const cc of arr) { // 单张匹配
+					if (that.getCardNumber(cc) + that.getCardNumber(card)) {
+						matched.push({
+							arr: [cc],
+							picked: card
+						})
+					}
+				}
+
+				for (let ii=0; ii<arr.length - 1; ii++) { // 双匹配
+					for (let jj=ii+1; jj<arr.length; jj+1) {
+						const c1 = arr[ii]
+						const c2 = arr[jj]
+						if (that.getCardNumber(c1) + that.getCardNumber(c2) + that.getCardNumber(card)) {
+						matched.push({
+							arr: [c1, c2],
+							picked: card
+						})
+					}
+					}
+				}
+
+				return matched
+			},
+			getBlueDropCard() {
+				const {
+					blue, 
+					red,
+					getMatched
+				} = this
+				const blueSorted = JSON.parse(JSON.stringify(blue))
+				blueSorted.sort((a, b) => {
+					return typeValueMap[a.type] - typeValueMap[b.type]
+				})
+				for (const cardInSortedBlue of blueSorted) {
+					const matched = getMatched(cardInSortedBlue, red)
+					if (matched.length === 0) {
+						return cardInSortedBlue
+					}
+				}
+				return blueSorted[0]
 			},
 			async dropCard() {
 				const that = this
@@ -451,13 +514,20 @@
 				}
 				if (dropCard) {
 					that.red = takeOut(that.red, [dropCard])
+					if (that.red.length === 0) { // 红方没牌了，游戏结束
+						this.show.gameover = true
+						return 
+					}
 					that.ground.push(dropCard)
 					that.red2 = []
 				}
 				
 				for (let idx=that.red.length; idx<4; idx++) { // 补齐到4张
-					that.red.push(that.getNextCard())
-					await wait()
+					const nextCard = that.getNextCard()
+					if(nextCard) {
+						that.red.push(nextCard)
+						await wait()
+					}
 				}
 				
 				// 该电脑出牌了
@@ -468,7 +538,7 @@
 				
 				const cardGroundMap = {} //  根据牌的value 放到 性能优化map中
 				for (const cardInGround of ground) {
-					const groundCardValue = that.getCardValue(cardInGround)
+					const groundCardValue = that.getCardNumber(cardInGround)
 					cardGroundMap[groundCardValue] = cardGroundMap[groundCardValue] || []
 					cardGroundMap[groundCardValue].push(cardInGround)
 				}
@@ -487,7 +557,7 @@
 				}
 				
 				for (const cardInBlue of blue) { // 单张匹配
-					const value = that.getCardValue(cardInBlue)
+					const value = that.getCardNumber(cardInBlue)
 					const picked = getHitObj(value, cardGroundMap)
 					if (picked) {
 						matched.push({
@@ -501,7 +571,7 @@
 					for (let idx2=idx1+1; idx2<blue.length; idx2++) {
 						const b1 = blue[idx1]
 						const b2 = blue[idx2]
-						const value = that.getCardValue(b1) + that.getCardValue(b2)
+						const value = that.getCardNumber(b1) + that.getCardNumber(b2)
 						const picked = getHitObj(value, cardGroundMap)
 						if (picked) {
 							matched.push({
@@ -538,12 +608,12 @@
 					
 					for (const bb of pickedBlue.blue) {
 						that.blue2.push(bb)
-						// that.audio[that.getCardValue(bb)].play()
+						// that.audio[that.getCardNumber(bb)].play()
 						await wait()
 						// that.audio[14].play()
 						await wait()
 					}
-					// that.audio[that.getCardValue(pickedBlue.picked)].play()
+					// that.audio[that.getCardNumber(pickedBlue.picked)].play()
 					that.picked = pickedBlue.picked
 					
 					await wait(3000) // 等待用户观察一下
@@ -556,25 +626,40 @@
 					that.blue2 = []
 					that.ground = takeOut(that.ground, [that.picked])
 					that.picked = false
-				}
-				
-				
-				
-				
 
-				
-				
-				for (let idx=that.blue.length; idx<5; idx++) {
-					that.blue.push(that.getNextCard())
-					await wait();
+					for (let idx=that.blue.length; idx<5; idx++) {
+						const nextCard = that.getNextCard()
+						if (nextCard) {
+							that.blue.push(nextCard)
+							await wait();
+						}
+					}
+
+					const toGround = that.getBlueDropCard()
+					that.blue2.push(toGround)
+					await wait(2000)
+					that.blue = takeOut(that.blue, [toGround])
+					that.ground.push(toGround)
+
+				} else { // 没有匹配得弃牌逻辑是，先打一张，再补一张
+					const toGround = that.getBlueDropCard()  // 
+					that.blue2.push(toGround)
+					await wait(2000)
+					that.blue = takeOut(that.blue, [toGround])
+					that.ground.push(toGround)
+
+					const nextCard = that.getNextCard()
+					if (nextCard) {
+						that.blue.push(nextCard)
+						await wait();
+					}
+				}
+
+				if (that.blue.length === 0) { // 蓝方没牌了，游戏结束
+					that.show.gameover = true
 				}
 				
-				const toGround = that.blue[Math.floor(Math.random()*that.blue.length)] // 随机丢弃一张
-				that.blue2.push(toGround)
-				await wait(2000)
-				that.blue = takeOut(that.blue, [toGround])
 				
-				that.ground.push(toGround)
 				that.blue2 = []
 				that.picked = false
 				
@@ -583,51 +668,56 @@
 				
 			},
 			async pickCard() {
+				const that = this
 				const {
 					picked,
 					red2
-				} = this
+				} = that
+				
 				if (picked) {
-					this.redPicked.push(picked)
+					that.redPicked.push(picked)
 					for (const card of red2) {
 						if(card) {
-							this.redPicked.push(card)
+							that.redPicked.push(card)
 						}
 					}
 					const newRed = []
-					for(const cardInRed of this.red) {
-						const found = this.red2.find(cc => {
+					for(const cardInRed of that.red) {
+						const found = that.red2.find(cc => {
 							return cc && cc.index === cardInRed.index
 						})
 						if (!found) {
 							newRed.push(cardInRed)
 						}
 					}
-					this.red = newRed;
+					that.red = newRed;
 					
 					const newGround = []
-					for (const cardInGround of this.ground) {
+					for (const cardInGround of that.ground) {
 						if(cardInGround.index !== picked.index) {
 							newGround.push(cardInGround)
 						}
 					}
-					this.ground = newGround
+					that.ground = newGround
 					
-					this.picked = false
-					this.red2 = []
+					that.picked = false
+					that.red2 = []
 					
 					
 					
 					for (let idx=this.red.length; idx<5; idx++) {
-						await wait();
-						this.red.push(this.getNextCard())
+						const nextCard = that.getNextCard()
+						if(nextCard) {
+							that.red.push(this.getNextCard())
+							await wait();
+						}
 					}
 					
 					this.redCanPick = false
 				}
 			},
 			
-			getCardValue(card) {
+			getCardNumber(card) {
 				let num = card.num + 1
 				if (card.type === 4) {
 					num = 5
@@ -646,7 +736,7 @@
 				}
 				
 				if (groundIdx >= 0) {
-					if (that.getCardValue(card) + this.pickedSum  === 14) {
+					if (that.getCardNumber(card) + this.pickedSum  === 14) {
 						that.picked = card
 					}
 				} else {
@@ -677,7 +767,7 @@
 			},
 			newGame() {
 				const that = this
-				that.cards = mess([...createCards(1), ...createCards(2)])
+				that.cards = mess([...createCards(1)]) // , ...createCards(2)
 				that.red = []
 				that.blue = []
 				that.ground = []
@@ -827,7 +917,7 @@
 						red2
 					} = that
 					if (red2.length > 0) {
-						if (that.getCardValue(card) + that.pickedSum  !== 14) {
+						if (that.getCardNumber(card) + that.pickedSum  !== 14) {
 							style.filter = 'brightness(.5)'
 						}
 					}
@@ -938,23 +1028,22 @@
 		width: 90%;
 		bottom: 20px;
 		display: flex;
-		justify-content: flex-start;
+		justify-content: space-around;
 	}
 	
 	.control-bar > .button {
-		padding: 20px;
 		border: 1px solid gray;
 		--c2: hsl(220, 100%, 66%);
 		--c1: hsl(240, 100%, 66%);
 		background: linear-gradient(var(--c1), var(--c2), var(--c1));
 		color: white;
-		border-radius: 20px;
+		border-radius: calc(var(--card-width) * .1);
 		margin: 10px;
-		min-width: 100px;
+		min-width: calc(var(--card-width));
+		height: calc(var(--card-width) * .5);
 		display: flex;
-		justify-content: center;
+		justify-content: space-around;
 		align-items: center;
-		margin-right: 40px;
 		cursor: pointer;
 	}
 	
@@ -963,10 +1052,15 @@
 		--c1: hsl(240, 100%, 76%);
 	}
 	
-	.red-picked-value.show {
+	.blue-picked-value {
+		top: 50px;
+		right: 200px;
+	}
+
+	.red-picked-value.show, .blue-picked-value.show {
 		opacity: 1;
 	}
-	.red-picked-value {
+	.red-picked-value, .blue-picked-value {
 		position: absolute;
 		bottom: 50px;
 		right: 200px;
@@ -977,10 +1071,6 @@
 		z-index: 30000;
 		opacity: 0;
 		transform: all .3s;
-	}
-	
-	.red-picked-value:before {
-		content: '+'
 	}
 	
 	.red-value {

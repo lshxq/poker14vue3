@@ -20,9 +20,10 @@ export default {
   mounted() {
     const that = this
     const height = that.$refs.homeRef.offsetHeight
+    const width = that.$refs.homeRef.offsetWidth
     that.size = {
       height,
-      width: Math.floor(height * .618)
+      width
     }
   }
 }
@@ -30,6 +31,8 @@ export default {
 
 <style scoped>
 .home {
-  height: 100vh;
+  height: calc(100vh);
+  width: calc(100vw);
+  max-width: calc(100vh * 0.618);
 }
 </style>
